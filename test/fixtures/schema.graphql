@@ -1,0 +1,56 @@
+scalar DateTime
+scalar Upload
+scalar JSONObject
+
+type Query {
+  user(id: ID!): User
+  users(active: Boolean, limit: Int): [User!]!
+  post(id: ID!): Post
+}
+
+type Mutation {
+  createUser(input: CreateUserInput!): User!
+  updateUser(id: ID!, name: String, age: Int): User
+  deleteUser(id: ID!): Boolean!
+  uploadAvatar(userId: ID!, file: Upload!): User
+}
+
+type Subscription {
+  userUpdated(id: ID!): User
+  postPublished(authorId: ID!): Post
+}
+
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  age: Int
+  active: Boolean!
+  createdAt: DateTime
+  metadata: JSONObject
+  posts: [Post!]!
+  address: Address
+}
+
+type Post {
+  id: ID!
+  title: String!
+  body: String
+  author: User!
+  tags: [String!]!
+  createdAt: DateTime!
+  published: Boolean!
+}
+
+type Address {
+  street: String!
+  city: String!
+  country: String!
+  zip: String
+}
+
+input CreateUserInput {
+  name: String!
+  email: String!
+  age: Int
+}
