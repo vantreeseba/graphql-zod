@@ -115,6 +115,25 @@ describe('inferZodSchema — nullability', () => {
     expect(() => schema.parse({ userId: '' })).toThrow();
     expect(schema.parse({ userId: '123' })).toMatchObject({ userId: '123' });
   });
+
+  it('nullable Boolean accepts null and undefined', () => {
+    const schema = inferZodSchema(doc('query Q($active: Boolean) { x }'));
+    expect(schema.parse({ active: null })).toMatchObject({ active: null });
+    expect(schema.parse({ active: undefined })).toMatchObject({ active: undefined });
+    expect(schema.parse({ active: false })).toMatchObject({ active: false });
+  });
+
+  it('nullable Int accepts null', () => {
+    const schema = inferZodSchema(doc('query Q($count: Int) { x }'));
+    expect(schema.parse({ count: null })).toMatchObject({ count: null });
+    expect(schema.parse({ count: 5 })).toMatchObject({ count: 5 });
+  });
+
+  it('nullable Float accepts null', () => {
+    const schema = inferZodSchema(doc('query Q($price: Float) { x }'));
+    expect(schema.parse({ price: null })).toMatchObject({ price: null });
+    expect(schema.parse({ price: 3.14 })).toMatchObject({ price: 3.14 });
+  });
 });
 
 // ---------------------------------------------------------------------------
