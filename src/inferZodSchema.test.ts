@@ -215,6 +215,14 @@ describe('inferZodSchema — operation types', () => {
     const schema = inferZodSchema(doc('query GetUsers { users { id } }'));
     expect(schema.parse({})).toEqual({});
   });
+
+  it('only processes the first operation definition in a multi-operation document', () => {
+    const schema = inferZodSchema(
+      doc('query A($id: ID!) { x } query B($name: String!) { x }'),
+    );
+    expect(schema.shape).toHaveProperty('id');
+    expect(schema.shape).not.toHaveProperty('name');
+  });
 });
 
 // ---------------------------------------------------------------------------
