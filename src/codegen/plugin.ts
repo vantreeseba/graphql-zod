@@ -3,6 +3,8 @@ import {
   Kind,
   type FieldNode,
   type GraphQLEnumType,
+  type GraphQLInputObjectType,
+  type GraphQLInputType,
   type GraphQLList,
   type GraphQLNamedType,
   type GraphQLNonNull,
@@ -34,6 +36,9 @@ function isGqlEnumType(t: GraphQLNamedType): t is GraphQLEnumType {
 function isGqlUnionType(t: GraphQLNamedType): t is GraphQLUnionType {
   return t.constructor.name === 'GraphQLUnionType';
 }
+function isGqlInputObjectType(t: GraphQLNamedType): t is GraphQLInputObjectType {
+  return t.constructor.name === 'GraphQLInputObjectType';
+}
 function getGqlNamedType(type: GraphQLOutputType): GraphQLNamedType {
   let t: GraphQLOutputType = type;
   while (isGqlNonNull(t) || isGqlList(t)) {
@@ -57,7 +62,58 @@ function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-function buildVariableCode(info: VariableInfo, scalarCodeMap: Record<string, string>): string {
+function resolveInputFieldCode(
+  fieldName: string,
+  fieldType: GraphQLInputType,
+  scalarCodeMap: Record<string, string>,
+  schema: GraphQLSchema,
+): string {
+  const asOut = fieldType as unknown as GraphQLOutputType;
+  const nullable = !isGqlNonNull(asOut);
+  const unwrapped = isGqlNonNull(asOut) ? asOut.ofType : asOut;
+  const isList = isGqlList(unwrapped);
+  const namedType = getGqlNamedType(asOut);
+
+  let code: string;
+
+  if (isGqlInputObjectType(namedType)) {
+    code = buildInputTypeCode(namedType, scalarCodeMap, schema);
+  } else if (namedType.name in scalarCodeMap) {
+    code = scalarCodeMap[namedType.name];
+    if (!nullable && fieldName !== 'id' && (namedType.name === 'String' || namedType.name === 'ID')) {
+      code = `${code}.min(1, { message: '${toStartCase(fieldName)} is required' })`;
+    }
+  } else {
+    console.warn(
+      `[graphql-zod] Unknown type "${namedType.name}" for field "${fieldName}" — falling back to z.any()`,
+    );
+    code = 'z.any()';
+  }
+
+  if (nullable) code = `${code}.nullish()`;
+  if (isList) code = `${code}.array()`;
+
+  return code;
+}
+
+function buildInputTypeCode(
+  inputType: GraphQLInputObjectType,
+  scalarCodeMap: Record<string, string>,
+  schema: GraphQLSchema,
+): string {
+  const fields = inputType.getFields();
+  const lines = Object.entries(fields).map(([fieldName, field]) => {
+    const code = resolveInputFieldCode(fieldName, field.type, scalarCodeMap, schema);
+    return `  ${fieldName}: ${code}`;
+  });
+  return `z.object({\n${lines.join(',\n')},\n})`;
+}
+
+function buildVariableCode(
+  info: VariableInfo,
+  scalarCodeMap: Record<string, string>,
+  schema?: GraphQLSchema,
+): string {
   let code: string;
 
   if (info.typeName in scalarCodeMap) {
@@ -70,8 +126,17 @@ function buildVariableCode(info: VariableInfo, scalarCodeMap: Record<string, str
     ) {
       code = `${code}.min(1, { message: '${toStartCase(info.name)} is required' })`;
     }
+  } else if (schema) {
+    const gqlType = schema.getType(info.typeName);
+    if (gqlType && isGqlInputObjectType(gqlType)) {
+      code = buildInputTypeCode(gqlType, scalarCodeMap, schema);
+    } else {
+      console.warn(
+        `[graphql-zod] Unknown type "${info.typeName}" for field "${info.name}" — falling back to z.any()`,
+      );
+      code = 'z.any()';
+    }
   } else {
-    // TODO: resolve nested input types recursively
     console.warn(
       `[graphql-zod] Unknown type "${info.typeName}" for field "${info.name}" — falling back to z.any()`,
     );
@@ -87,6 +152,7 @@ function buildVariableCode(info: VariableInfo, scalarCodeMap: Record<string, str
 function buildVariablesSchema(
   op: OperationDefinitionNode,
   scalarCodeMap: Record<string, string>,
+  schema?: GraphQLSchema,
 ): string {
   const defs = op.variableDefinitions ?? [];
   if (defs.length === 0) return 'z.object({})';
@@ -99,7 +165,7 @@ function buildVariablesSchema(
       typeName: '',
     };
     resolveTypeInfo(varDef.type, info);
-    return `  ${info.name}: ${buildVariableCode(info, scalarCodeMap)}`;
+    return `  ${info.name}: ${buildVariableCode(info, scalarCodeMap, schema)}`;
   });
 
   return `z.object({\n${fields.join(',\n')},\n})`;
@@ -197,7 +263,7 @@ export const plugin: PluginFunction<PluginConfig> = (schema: GraphQLSchema, docu
       const opType = capitalize(def.operation);
       const prefix = `${opName}${opType}`;
 
-      const variablesSchema = buildVariablesSchema(def, scalarCodeMap);
+      const variablesSchema = buildVariablesSchema(def, scalarCodeMap, schema);
       blocks.push(`export const ${prefix}VariablesSchema = ${variablesSchema};`);
 
       const resultSchema = buildResultSchema(def, schema, scalarCodeMap);
