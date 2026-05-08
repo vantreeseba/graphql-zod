@@ -12,10 +12,19 @@ const TEST_SCHEMA_SDL = `
   scalar Upload
   scalar Decimal
 
+  enum UserRole {
+    ADMIN
+    USER
+    GUEST
+  }
+
+  union SearchResult = User | Post
+
   type Query {
     user(id: ID!): User
     users(active: Boolean): [User!]!
     post(id: ID!, includeDeleted: Boolean): Post
+    search(term: String!): [SearchResult!]!
   }
 
   type Mutation {
@@ -41,6 +50,7 @@ const TEST_SCHEMA_SDL = `
     metadata: JSONObject
     posts: [Post!]!
     address: Address
+    role: UserRole!
   }
 
   type Post {
@@ -329,6 +339,24 @@ describe('plugin — result schemas (mutations)', () => {
     // createUser returns User! (non-null) — the result object itself is not nullish
     // id is ID! — no nullish
     expect(output).toContain('id: z.string()');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Result schemas — enum and union types
+// ---------------------------------------------------------------------------
+describe('plugin — result schemas (enum and union)', () => {
+  it('enum result field maps to z.string()', () => {
+    const output = runPlugin('query GetUser($id: ID!) { user(id: $id) { role } }');
+    expect(output).toContain('role: z.string()');
+  });
+
+  it('union result type falls back to z.any() with a warning', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const output = runPlugin('query Search($term: String!) { search(term: $term) { __typename } }');
+    expect(output).toContain('z.any()');
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('SearchResult'));
+    warnSpy.mockRestore();
   });
 });
 
