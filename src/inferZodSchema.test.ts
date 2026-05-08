@@ -166,6 +166,13 @@ describe('inferZodSchema — lists', () => {
     const schema = inferZodSchema(doc('query Q($ids: [ID!]!) { x }'));
     expect(schema.parse({ ids: [] })).toMatchObject({ ids: [] });
   });
+
+  it('[String]! non-null list of nullable items — list itself is required', () => {
+    const schema = inferZodSchema(doc('query Q($tags: [String]!) { x }'));
+    expect(() => schema.parse({ tags: null })).toThrow();
+    expect(schema.parse({ tags: [] })).toBeDefined();
+    expect(schema.parse({ tags: ['a'] })).toBeDefined();
+  });
 });
 
 // ---------------------------------------------------------------------------
