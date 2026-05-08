@@ -53,4 +53,12 @@ input CreateUserInput {
   name: String!
   email: String!
   age: Int
+  address: AddressInput
+}
+
+input AddressInput {
+  street: String!
+  city: String!
+  country: String!
+  zip: String
 }

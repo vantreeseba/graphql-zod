@@ -181,9 +181,20 @@ describe('CreateUser mutation', () => {
     expect(generatedContent).toContain('CreateUserMutationVariablesSchema');
   });
 
-  it('variables: unknown input type falls back to z.any()', () => {
+  it('variables: input type is resolved to a z.object() with its fields', () => {
     const block = extractBlock(generatedContent, 'CreateUserMutationVariablesSchema');
-    expect(block).toContain('input: z.any()');
+    expect(block).toContain('input: z.object(');
+    expect(block).toContain('name:');
+    expect(block).toContain('email:');
+    expect(block).toContain('age:');
+  });
+
+  it('variables: nested AddressInput inside CreateUserInput is resolved to a z.object()', () => {
+    const block = extractBlock(generatedContent, 'CreateUserMutationVariablesSchema');
+    expect(block).toContain('address: z.object(');
+    expect(block).toContain('street:');
+    expect(block).toContain('city:');
+    expect(block).toContain('country:');
   });
 
   it('exports CreateUserMutationResultSchema', () => {

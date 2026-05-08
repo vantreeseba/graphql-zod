@@ -22,6 +22,8 @@ const TEST_SCHEMA_SDL = `
     updateUser(id: ID!, name: String, age: Int): User
     deleteUser(id: ID!): Boolean!
     uploadAvatar(userId: ID!, file: Upload!): User
+    updateUserProfile(id: ID!, profile: UpdateProfileInput): User
+    createUsers(inputs: [CreateUserInput!]!): [User!]!
   }
 
   type Subscription {
@@ -59,6 +61,19 @@ const TEST_SCHEMA_SDL = `
     name: String!
     email: String!
     age: Int
+    address: AddressInput
+  }
+
+  input UpdateProfileInput {
+    bio: String
+    website: String!
+    address: AddressInput
+  }
+
+  input AddressInput {
+    street: String!
+    city: String!
+    country: String!
   }
 `;
 
@@ -167,13 +182,13 @@ describe('plugin — mutation variables', () => {
     expect(output).toContain('CreateUserMutationVariablesSchema');
   });
 
-  it('unknown input type falls back to z.any() with a warning', () => {
+  it('truly unknown input type falls back to z.any() with a warning', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const output = runPlugin(
-      'mutation CreateUser($input: CreateUserInput!) { createUser(input: $input) { id } }',
+      'mutation DeleteUser($id: ID!, $reason: UnknownReasonInput!) { deleteUser(id: $id) }',
     );
     expect(output).toContain('z.any()');
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('CreateUserInput'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('UnknownReasonInput'));
     warnSpy.mockRestore();
   });
 
@@ -360,5 +375,100 @@ describe('plugin — multiple document files', () => {
     const content = typeof result === 'string' ? result : result.content;
     expect(content).toContain('GetUserQueryVariablesSchema');
     expect(content).toContain('DeleteUserMutationVariablesSchema');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Input type variables
+// ---------------------------------------------------------------------------
+describe('plugin — input type variables', () => {
+  it('resolves a non-null input type to a z.object() with its fields', () => {
+    const output = runPlugin(
+      'mutation CreateUser($input: CreateUserInput!) { createUser(input: $input) { id } }',
+    );
+    expect(output).toContain('input: z.object(');
+    expect(output).toContain('name:');
+    expect(output).toContain('email:');
+    expect(output).toContain('age:');
+  });
+
+  it('required String fields inside an input type get .min(1)', () => {
+    const output = runPlugin(
+      'mutation CreateUser($input: CreateUserInput!) { createUser(input: $input) { id } }',
+    );
+    expect(output).toContain("min(1, { message: 'Name is required' })");
+    expect(output).toContain("min(1, { message: 'Email is required' })");
+  });
+
+  it('nullable field inside an input type gets .nullish()', () => {
+    const output = runPlugin(
+      'mutation CreateUser($input: CreateUserInput!) { createUser(input: $input) { id } }',
+    );
+    // age: Int (nullable) → numericString(z.number().int().safe()).nullish()
+    expect(output).toContain('numericString(z.number().int().safe()).nullish()');
+  });
+
+  it('non-null input type variable has no outer .nullish()', () => {
+    const output = runPlugin(
+      'mutation CreateUser($input: CreateUserInput!) { createUser(input: $input) { id } }',
+    );
+    expect(output).toContain('input: z.object(');
+    // input is CreateUserInput! — its z.object closes with }),  not }).nullish(),
+    // so the variables schema ends with  }),\n})  (input close then outer close)
+    expect(output).toContain('}),\n})');
+  });
+
+  it('nullable input type variable wraps the z.object() with .nullish()', () => {
+    const output = runPlugin(
+      'mutation UpdateProfile($id: ID!, $profile: UpdateProfileInput) { updateUserProfile(id: $id, profile: $profile) { id } }',
+    );
+    expect(output).toContain('profile: z.object(');
+    // The profile object should be followed by .nullish() since UpdateProfileInput is nullable
+    expect(output).toMatch(/profile: z\.object\([\s\S]*?\)\.nullish\(\)/);
+  });
+
+  it('list of input types generates .array()', () => {
+    const output = runPlugin(
+      'mutation CreateUsers($inputs: [CreateUserInput!]!) { createUsers(inputs: $inputs) { id } }',
+    );
+    expect(output).toContain('inputs: z.object(');
+    expect(output).toContain('.array()');
+  });
+
+  it('resolves a nested input type inside a user input type', () => {
+    const output = runPlugin(
+      'mutation CreateUser($input: CreateUserInput!) { createUser(input: $input) { id } }',
+    );
+    // CreateUserInput has address: AddressInput (nullable)
+    expect(output).toContain('address: z.object(');
+    expect(output).toContain('street: z.string()');
+    expect(output).toContain('city: z.string()');
+    expect(output).toContain('country: z.string()');
+  });
+
+  it('resolves nested input types recursively', () => {
+    const output = runPlugin(
+      'mutation UpdateProfile($id: ID!, $profile: UpdateProfileInput) { updateUserProfile(id: $id, profile: $profile) { id } }',
+    );
+    // UpdateProfileInput has an AddressInput field
+    expect(output).toContain('address: z.object(');
+    expect(output).toContain('street:');
+    expect(output).toContain('city:');
+    expect(output).toContain('country:');
+  });
+
+  it('nullable nested input type field gets .nullish()', () => {
+    const output = runPlugin(
+      'mutation UpdateProfile($id: ID!, $profile: UpdateProfileInput) { updateUserProfile(id: $id, profile: $profile) { id } }',
+    );
+    // address: AddressInput (nullable) → z.object({...}).nullish()
+    expect(output).toMatch(/address: z\.object\([\s\S]*?\)\.nullish\(\)/);
+  });
+
+  it('does not emit a warning for a known input type', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    runPlugin('mutation CreateUser($input: CreateUserInput!) { createUser(input: $input) { id } }');
+    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('CreateUserInput'));
+    warnSpy.mockRestore();
   });
 });
