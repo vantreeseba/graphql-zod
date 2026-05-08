@@ -34,6 +34,7 @@ const TEST_SCHEMA_SDL = `
     uploadAvatar(userId: ID!, file: Upload!): User
     updateUserProfile(id: ID!, profile: UpdateProfileInput): User
     createUsers(inputs: [CreateUserInput!]!): [User!]!
+    updateUserFull(input: UpdateUserInput!): User
   }
 
   type Subscription {
@@ -85,6 +86,11 @@ const TEST_SCHEMA_SDL = `
     street: String!
     city: String!
     country: String!
+  }
+
+  input UpdateUserInput {
+    id: ID!
+    name: String
   }
 `;
 
@@ -497,6 +503,15 @@ describe('plugin — input type variables', () => {
     );
     // address: AddressInput (nullable) → z.object({...}).nullish()
     expect(output).toMatch(/address: z\.object\([\s\S]*?\)\.nullish\(\)/);
+  });
+
+  it('field named "id" inside an input type skips min(1)', () => {
+    const output = runPlugin(
+      'mutation UpdateUser($input: UpdateUserInput!) { updateUserFull(input: $input) { id } }',
+    );
+    // id: ID! — named "id" so min(1) should be skipped
+    expect(output).toContain('id: z.string()');
+    expect(output).not.toContain("min(1, { message: 'Id is required' })");
   });
 
   it('does not emit a warning for a known input type', () => {
