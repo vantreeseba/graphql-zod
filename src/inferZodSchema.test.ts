@@ -70,6 +70,12 @@ describe('inferZodSchema — scalars', () => {
     expect(schema.parse({ file: new Blob() })).toBeDefined();
     expect(schema.parse({ file: null })).toBeDefined();
   });
+
+  it('maps Decimal to numericString, coerces numeric string', () => {
+    const schema = inferZodSchema(doc('query Q($price: Decimal!) { x }'));
+    expect(schema.parse({ price: '9.99' })).toMatchObject({ price: 9.99 });
+    expect(schema.parse({ price: 42 })).toMatchObject({ price: 42 });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -242,6 +248,22 @@ describe('inferZodSchema — field overrides', () => {
     expect(() => schema.parse({ id: 'not-uuid', email: 'a@b.com' })).toThrow();
     expect(schema.parse({ id: crypto.randomUUID(), email: 'a@b.com' })).toBeDefined();
   });
+
+  it('nested z.object() override validates the full nested shape', () => {
+    const schema = inferZodSchema(doc('query Q($address: AddressInput!) { x }'), {
+      overrides: {
+        address: z.object({
+          street: z.string().min(1),
+          city: z.string().min(1),
+          zip: z.string().optional(),
+        }),
+      },
+    });
+    expect(schema.parse({ address: { street: '123 Main', city: 'Springfield' } })).toBeDefined();
+    expect(schema.parse({ address: { street: '1', city: 'A', zip: '12345' } })).toBeDefined();
+    expect(() => schema.parse({ address: { city: 'Springfield' } })).toThrow();
+    expect(() => schema.parse({ address: { street: '', city: 'Springfield' } })).toThrow();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -263,5 +285,40 @@ describe('inferZodSchema — unknown types', () => {
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('Unknown type "CreateUserInput"'),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Input type variables (runtime mode — no schema, fallback to z.any())
+// ---------------------------------------------------------------------------
+describe('inferZodSchema — input type variables', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  it('nullable input type falls back to z.any().nullish()', () => {
+    const schema = inferZodSchema(doc('query Q($input: CreateUserInput) { x }'));
+    expect(schema.parse({ input: null })).toBeDefined();
+    expect(schema.parse({ input: undefined })).toBeDefined();
+    expect(schema.parse({ input: { name: 'Alice' } })).toBeDefined();
+  });
+
+  it('non-null input type falls back to z.any()', () => {
+    const schema = inferZodSchema(doc('query Q($input: CreateUserInput!) { x }'));
+    expect(schema.parse({ input: { name: 'Alice', email: 'a@b.com' } })).toBeDefined();
+    expect(schema.parse({ input: {} })).toBeDefined();
+  });
+
+  it('list of input types falls back to z.any().array()', () => {
+    const schema = inferZodSchema(doc('query Q($inputs: [CreateUserInput!]!) { x }'));
+    expect(schema.parse({ inputs: [{ name: 'Alice' }] })).toBeDefined();
+    expect(schema.parse({ inputs: [] })).toBeDefined();
+  });
+
+  it('mixed scalar and input type variables each resolve independently', () => {
+    const schema = inferZodSchema(doc('query Q($userId: ID!, $input: CreateUserInput!) { x }'));
+    // userId is a non-null ID not named "id" → min(1) enforced
+    expect(() => schema.parse({ userId: '', input: {} })).toThrow();
+    expect(schema.parse({ userId: '1', input: { name: 'Alice' } })).toBeDefined();
   });
 });
