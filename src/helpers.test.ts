@@ -13,13 +13,13 @@ describe('numericString', () => {
     expect(schema.parse('7')).toBe(7);
   });
 
-  it('coerces an unparseable string to 0', () => {
-    expect(schema.parse('abc')).toBe(0);
+  it('throws on an unparseable string', () => {
+    expect(() => schema.parse('abc')).toThrow();
   });
 
-  it('coerces null-ish to 0', () => {
-    expect(schema.parse(null)).toBe(0);
-    expect(schema.parse(undefined)).toBe(0);
+  it('throws on null or undefined', () => {
+    expect(() => schema.parse(null)).toThrow();
+    expect(() => schema.parse(undefined)).toThrow();
   });
 
   it('applies downstream zod validations', () => {
@@ -28,9 +28,9 @@ describe('numericString', () => {
     expect(intSchema.parse('5')).toBe(5);
   });
 
-  it('works with float schema', () => {
+  it('works with float schema, preserving decimal precision', () => {
     const floatSchema = numericString(z.number().safe());
-    expect(floatSchema.parse('3.14')).toBe(3);
+    expect(floatSchema.parse('3.14')).toBe(3.14);
     expect(floatSchema.parse(3.14)).toBe(3.14);
   });
 });

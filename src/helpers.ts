@@ -3,9 +3,9 @@ import { z } from 'zod';
 
 export const numericString = (schema: ZodNumber) =>
   z.preprocess((a) => {
-    if (typeof a === 'string') return Number.parseInt(a, 10) || 0;
+    if (typeof a === 'string') return Number(a);
     if (typeof a === 'number') return a;
-    return 0;
+    return a;
   }, schema);
 
 export function toStartCase(str: string): string {
