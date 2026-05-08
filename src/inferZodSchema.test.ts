@@ -76,6 +76,16 @@ describe('inferZodSchema — scalars', () => {
     expect(schema.parse({ price: '9.99' })).toMatchObject({ price: 9.99 });
     expect(schema.parse({ price: 42 })).toMatchObject({ price: 42 });
   });
+
+  it('Int rejects non-numeric string', () => {
+    const schema = inferZodSchema(doc('query Q($count: Int!) { x }'));
+    expect(() => schema.parse({ count: 'abc' })).toThrow();
+  });
+
+  it('Float rejects non-numeric string', () => {
+    const schema = inferZodSchema(doc('query Q($price: Float!) { x }'));
+    expect(() => schema.parse({ price: 'abc' })).toThrow();
+  });
 });
 
 // ---------------------------------------------------------------------------
