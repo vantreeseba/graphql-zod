@@ -416,6 +416,15 @@ describe('plugin — custom scalar config', () => {
     });
     expect(output).toContain('z.object({ lat: z.number(), lng: z.number() })');
   });
+
+  it('custom scalar override applies to result fields', () => {
+    const output = runPlugin(
+      'query GetUser($id: ID!) { user(id: $id) { createdAt } }',
+      { scalars: { DateTime: 'z.string().datetime()' } },
+    );
+    expect(output).toContain('z.string().datetime()');
+    expect(output).not.toContain('z.date()');
+  });
 });
 
 // ---------------------------------------------------------------------------
