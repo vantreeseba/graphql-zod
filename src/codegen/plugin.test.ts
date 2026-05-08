@@ -25,6 +25,7 @@ const TEST_SCHEMA_SDL = `
     users(active: Boolean): [User!]!
     post(id: ID!, includeDeleted: Boolean): Post
     search(term: String!): [SearchResult!]!
+    usersByMeta(filter: JSONObject!): [User!]!
   }
 
   type Mutation {
@@ -345,6 +346,21 @@ describe('plugin — result schemas (mutations)', () => {
     // createUser returns User! (non-null) — the result object itself is not nullish
     // id is ID! — no nullish
     expect(output).toContain('id: z.string()');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// JSONObject scalar
+// ---------------------------------------------------------------------------
+describe('plugin — JSONObject scalar', () => {
+  it('JSONObject variable maps to z.record(z.string(), z.unknown())', () => {
+    const output = runPlugin('query FilterUsers($filter: JSONObject!) { usersByMeta(filter: $filter) { id } }');
+    expect(output).toContain("z.record(z.string(), z.unknown())");
+  });
+
+  it('JSONObject result field maps to z.record(z.string(), z.unknown())', () => {
+    const output = runPlugin('query GetUser($id: ID!) { user(id: $id) { metadata } }');
+    expect(output).toContain("z.record(z.string(), z.unknown())");
   });
 });
 
