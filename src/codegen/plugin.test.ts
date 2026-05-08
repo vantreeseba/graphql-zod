@@ -316,6 +316,14 @@ describe('plugin — result schemas (nested objects)', () => {
     const output = runPlugin('query GetUser($id: ID!) { user(id: $id) { posts { id title } } }');
     expect(output).toContain('.array()');
   });
+
+  it('non-null list of object types generates z.object().array() without nullish', () => {
+    const output = runPlugin('query GetUser($id: ID!) { user(id: $id) { posts { id title } } }');
+    // posts: [Post!]! — non-null list of non-null objects
+    expect(output).toContain('posts: z.object(');
+    expect(output).toMatch(/posts: z\.object\([\s\S]*?\)\.array\(\)/);
+    expect(output).not.toMatch(/posts: z\.object\([\s\S]*?\)\.nullish\(\)/);
+  });
 });
 
 // ---------------------------------------------------------------------------
