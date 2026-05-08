@@ -10,6 +10,7 @@ const TEST_SCHEMA_SDL = `
   scalar DateTime
   scalar JSONObject
   scalar Upload
+  scalar Decimal
 
   type Query {
     user(id: ID!): User
@@ -163,6 +164,11 @@ describe('plugin — query variables', () => {
   it('DateTime variable maps to z.date()', () => {
     const output = runPlugin('query Q($at: DateTime!) { users { id } }');
     expect(output).toContain('z.date()');
+  });
+
+  it('Decimal variable uses numericString', () => {
+    const output = runPlugin('query Q($price: Decimal!) { users { id } }');
+    expect(output).toContain('numericString(z.number().safe())');
   });
 
   it('no variables produces z.object({})', () => {
