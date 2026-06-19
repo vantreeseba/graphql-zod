@@ -1,0 +1,28 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "@vantreeseba/graphql-zod",
+  "description": "Auto Zod validation schema builder from GraphQL typed documents: a runtime inferZodSchema for operation variables plus a graphql-codegen plugin that emits variables and result schemas.",
+  "folders": [
+    "src"
+  ],
+  "excludeFolders": [
+    "dist",
+    "node_modules",
+    ".git",
+    ".claude"
+  ],
+  "excludeFiles": [
+    "package-lock.json"
+  ],
+  "rules": [
+    "ESM only (\"type\": \"module\") and TypeScript 5 strict mode; import paths use the .js extension.",
+    "graphql (>=16) and zod (>=3) are peer dependencies, not bundled.",
+    "Public API: inferZodSchema (runtime), plugin (graphql-codegen), and the numericString helper — all exported from src/index.ts.",
+    "Nullable GraphQL fields map to .nullish(); list fields map to .array().",
+    "Non-null String/ID fields get .min(1), except fields named 'id'.",
+    "User scalar overrides merge over the default scalar map (user wins); user field overrides replace generated types wholesale.",
+    "Unknown/unmapped types fall back to z.any() and emit a console.warn instead of throwing.",
+    "Nested input object types and enums are not yet resolved (fall back to z.any() / z.string()); result schemas are codegen-only — see TODO.md."
+  ],
+  "previousVersions": []
+}

@@ -1,0 +1,37 @@
+# @vantreeseba/graphql-zod
+
+> Auto Zod validation schema builder from GraphQL typed documents. It builds [Zod](https://zod.dev) validation schemas from GraphQL operations in two modes: **runtime** (consume a `TypedDocumentNode` directly to validate an operation's variables) and **codegen** (a [graphql-codegen](https://the-guild.dev/graphql/codegen) plugin that emits variables and result schemas per named operation).
+
+ESM-only TypeScript 5 library. `graphql` (>=16) and `zod` (>=3) are peer dependencies. Install with `npm install @vantreeseba/graphql-zod graphql zod`.
+
+## Public API
+
+- `inferZodSchema(document, options?)` — runtime mode. Takes a `TypedDocumentNode` (query, mutation, or subscription) and returns a `z.ZodObject` for the operation's **variable** types. Does not require the full GraphQL schema at runtime. `options.scalars` merges over the default scalar map (user wins); `options.overrides` replaces the generated Zod type for a named field wholesale.
+- `plugin` — graphql-codegen plugin export. Generates `{OperationName}{OperationType}VariablesSchema` and `{OperationName}{OperationType}ResultSchema` for every named operation. Config option `scalars: Record<string, string>` overrides scalar mappings with Zod expression strings. Anonymous operations are skipped.
+- `numericString(schema)` — helper that preprocesses string or number input into a number before validating with the given `ZodNumber` (e.g. `numericString(z.number().int().positive()).parse('42') // → 42`).
+
+## Behavior
+
+- Nullable GraphQL fields → `.nullish()`; list fields → `.array()`.
+- Non-null `String`/`ID` fields → `.min(1)`, except fields named `id`.
+- Default scalar map: `String`/`ID` → `z.string()`, `Boolean` → `z.boolean()`, `Int` → `numericString(z.number().int().safe())`, `Float`/`Decimal` → `numericString(z.number().safe())`, `DateTime`/`DateTimeISO` → `z.date()`, `JSONObject` → `z.record(z.string(), z.unknown())`, `Upload` → `z.any()`.
+- Unknown/unmapped types fall back to `z.any()` and emit a `console.warn` (no throw).
+
+## Docs
+
+- [README](https://github.com/vantreeseba/graphql-zod/blob/main/README.md): Install, runtime usage, codegen plugin setup, scalar map, and generated-output examples.
+- [Specifications](https://github.com/vantreeseba/graphql-zod/blob/main/specifications.md): Full API contract, both modes, nullability/array rules, error handling, and naming conventions.
+- [AGENTS.md](https://github.com/vantreeseba/graphql-zod/blob/main/AGENTS.md): Project structure, stack, and key conventions.
+
+## Source
+
+- [src/index.ts](https://github.com/vantreeseba/graphql-zod/blob/main/src/index.ts): Public API entry point (re-exports).
+- [src/inferZodSchema.ts](https://github.com/vantreeseba/graphql-zod/blob/main/src/inferZodSchema.ts): Runtime mode implementation.
+- [src/codegen/plugin.ts](https://github.com/vantreeseba/graphql-zod/blob/main/src/codegen/plugin.ts): graphql-codegen plugin.
+- [src/scalars.ts](https://github.com/vantreeseba/graphql-zod/blob/main/src/scalars.ts): Default scalar map (Zod instances + code strings).
+- [src/helpers.ts](https://github.com/vantreeseba/graphql-zod/blob/main/src/helpers.ts): Exported utility helpers (`numericString`, `toStartCase`).
+- [src/typeResolver.ts](https://github.com/vantreeseba/graphql-zod/blob/main/src/typeResolver.ts): Shared `VariableInfo` + `resolveTypeInfo` for runtime and codegen.
+
+## Optional
+
+- [TODO.md](https://github.com/vantreeseba/graphql-zod/blob/main/TODO.md): Deferred work — recursive nested input type resolution, enum-aware `z.enum([...])` generation, and runtime-mode result schemas.
