@@ -4,13 +4,13 @@
  * on the generated file content.
  */
 
-import { codegen } from '@graphql-codegen/core';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { codegen } from '@graphql-codegen/core';
 import { parse } from 'graphql';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { plugin } from '../../src/codegen/plugin.js';
+import { plugin } from '../../src/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = join(__dirname, '../fixtures');
@@ -36,6 +36,7 @@ beforeAll(async () => {
     pluginContext: {},
   });
 
+  mkdirSync(dirname(OUT_FILE), { recursive: true });
   writeFileSync(OUT_FILE, generatedContent, 'utf-8');
 
   vi.restoreAllMocks();
@@ -336,7 +337,10 @@ function extractBlock(content: string, name: string): string {
 
   while (i < content.length) {
     const ch = content[i];
-    if (ch === '(' || ch === '{') { depth++; started = true; }
+    if (ch === '(' || ch === '{') {
+      depth++;
+      started = true;
+    }
     if (ch === ')' || ch === '}') depth--;
     if (started && depth === 0 && ch === ';') return content.slice(start, i + 1);
     i++;

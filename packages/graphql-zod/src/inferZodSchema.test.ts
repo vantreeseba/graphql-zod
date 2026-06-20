@@ -199,7 +199,9 @@ describe('inferZodSchema — operation types', () => {
 
   it('works with mutation operations', () => {
     const schema = inferZodSchema(
-      doc('mutation CreateUser($name: String!, $email: String!) { createUser(name: $name) { id } }'),
+      doc(
+        'mutation CreateUser($name: String!, $email: String!) { createUser(name: $name) { id } }',
+      ),
     );
     expect(schema.parse({ name: 'Alice', email: 'alice@example.com' })).toBeDefined();
   });
@@ -217,9 +219,7 @@ describe('inferZodSchema — operation types', () => {
   });
 
   it('only processes the first operation definition in a multi-operation document', () => {
-    const schema = inferZodSchema(
-      doc('query A($id: ID!) { x } query B($name: String!) { x }'),
-    );
+    const schema = inferZodSchema(doc('query A($id: ID!) { x } query B($name: String!) { x }'));
     expect(schema.shape).toHaveProperty('id');
     expect(schema.shape).not.toHaveProperty('name');
   });
@@ -276,7 +276,12 @@ describe('inferZodSchema — field overrides', () => {
 
   it('override with .refine() adds custom logic', () => {
     const schema = inferZodSchema(doc('query Q($age: Int!) { x }'), {
-      overrides: { age: z.number().int().refine((n) => n >= 18, { message: 'Must be 18+' }) },
+      overrides: {
+        age: z
+          .number()
+          .int()
+          .refine((n) => n >= 18, { message: 'Must be 18+' }),
+      },
     });
     expect(() => schema.parse({ age: 17 })).toThrow();
     expect(schema.parse({ age: 18 })).toMatchObject({ age: 18 });

@@ -1,129 +1,37 @@
-# @vantreeseba/graphql-zod
+# graphql-zod
 
-Builds Zod validation schemas from GraphQL typed documents. Two modes: runtime and codegen plugin.
+A monorepo for the `@vantreeseba/graphql-zod` toolkit — build [Zod](https://zod.dev)
+validation schemas from GraphQL typed documents.
 
-## Install
+## Packages
+
+| Package | Description |
+|---|---|
+| [`@vantreeseba/graphql-zod`](./packages/graphql-zod) | The runtime: `inferZodSchema` builds a Zod schema for an operation's variables from a `TypedDocumentNode`, plus the `numericString` helper and the default scalar map. See its [README](./packages/graphql-zod/README.md). |
+| [`@vantreeseba/graphql-zod-codegen`](./packages/graphql-zod-codegen) | A [graphql-codegen](https://the-guild.dev/graphql/codegen) plugin that emits `{Name}{Type}VariablesSchema` / `{Name}{Type}ResultSchema` for every named operation. See its [README](./packages/graphql-zod-codegen/README.md). |
+
+The generated codegen output imports `numericString` from the runtime package, so
+consumers install both: `@vantreeseba/graphql-zod` as a runtime dependency and
+`@vantreeseba/graphql-zod-codegen` as a dev dependency.
+
+## Development
+
+This is an npm-workspaces monorepo.
 
 ```bash
-npm install @vantreeseba/graphql-zod
-# peer deps
-npm install graphql zod
+npm install
+npm run build        # build every package to its dist/
+npm test             # test every package
+npm run typecheck    # type-check every package
+npm run typecheck:tests
+npm run check        # biome lint + format check (whole repo)
 ```
 
----
+Run a script in a single package with `-w`:
 
-## Runtime usage
-
-Pass a `TypedQueryDocumentNode` (from graphql-codegen) to get a Zod schema for its variables.
-
-```ts
-import { inferZodSchema } from '@vantreeseba/graphql-zod';
-import { GetUserDocument } from './__generated__/graphql';
-
-const schema = inferZodSchema(GetUserDocument);
-schema.parse(variables); // throws ZodError on invalid input
+```bash
+npm run test -w packages/graphql-zod-codegen
 ```
 
-### Options
-
-```ts
-const schema = inferZodSchema(GetUserDocument, {
-  // Override scalar mappings
-  scalars: {
-    DateTime: z.string().datetime(),
-  },
-  // Replace individual fields wholesale
-  overrides: {
-    email: z.string().email(),
-    age: z.number().int().refine((n) => n >= 18),
-  },
-});
-```
-
-### Default scalar map
-
-| GraphQL | Zod |
-|---|---|
-| `String` / `ID` | `z.string()` |
-| `Boolean` | `z.boolean()` |
-| `Int` | `numericString(z.number().int().safe())` |
-| `Float` / `Decimal` | `numericString(z.number().safe())` |
-| `DateTime` / `DateTimeISO` | `z.date()` |
-| `JSONObject` | `z.record(z.string(), z.unknown())` |
-| `Upload` | `z.any()` |
-| Unknown types | `z.any()` + `console.warn` |
-
-Non-null `String`/`ID` fields (except those named `id`) automatically get `.min(1)`.
-
-### Utilities
-
-```ts
-import { numericString } from '@vantreeseba/graphql-zod';
-
-// Coerces string or number input to a number before validating
-const schema = numericString(z.number().int().positive());
-schema.parse('42'); // → 42
-```
-
----
-
-## Codegen plugin
-
-Add to your `codegen.ts` / `codegen.yml`. Generates `{Name}{Type}VariablesSchema` and `{Name}{Type}ResultSchema` for every named operation.
-
-### `codegen.ts`
-
-```ts
-import type { CodegenConfig } from '@graphql-codegen/cli';
-
-const config: CodegenConfig = {
-  schema: 'schema.graphql',
-  documents: 'src/**/*.graphql',
-  generates: {
-    'src/__generated__/zod-schemas.ts': {
-      plugins: ['@vantreeseba/graphql-zod'],
-      config: {
-        scalars: {
-          DateTime: "z.string().datetime()",
-        },
-      },
-    },
-  },
-};
-
-export default config;
-```
-
-### Generated output
-
-```ts
-// src/__generated__/zod-schemas.ts
-import { z } from 'zod';
-import { numericString } from '@vantreeseba/graphql-zod';
-
-export const GetUserQueryVariablesSchema = z.object({
-  id: z.string(),
-});
-
-export const GetUserQueryResultSchema = z.object({
-  user: z.object({
-    id: z.string(),
-    name: z.string(),
-    age: numericString(z.number().int().safe()).nullish(),
-  }).nullish(),
-});
-```
-
-### Plugin config
-
-| Option | Type | Description |
-|---|---|---|
-| `scalars` | `Record<string, string>` | Override scalar mappings. Values are Zod expression strings. |
-
----
-
-## Notes
-
-- Unknown/object input types (e.g. `CreateUserInput`) fall back to `z.any()` — see `TODO.md`
-- Enums fall back to `z.string()` — see `TODO.md`
-- Result types are codegen-only; runtime mode is variables-only
+The core builds before the codegen plugin (alphabetical workspace order), so the
+plugin's `tsc` resolves the runtime package's types from its built `dist/`.

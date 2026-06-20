@@ -1,0 +1,41 @@
+{
+  "name": "@vantreeseba/graphql-zod",
+  "version": "0.1.0",
+  "description": "Auto Zod validation schema builder from GraphQL typed documents (runtime).",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vantreeseba/graphql-zod.git",
+    "directory": "packages/graphql-zod"
+  },
+  "homepage": "https://github.com/vantreeseba/graphql-zod#readme",
+  "bugs": {
+    "url": "https://github.com/vantreeseba/graphql-zod/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.tests.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "graphql": ">=16",
+    "zod": ">=3"
+  },
+  "devDependencies": {
+    "graphql": "^16.14.0",
+    "zod": "^3.25.76"
+  }
+}

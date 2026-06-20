@@ -1,6 +1,15 @@
+/**
+ * A GraphQL Code Generator plugin that emits Zod validation schemas
+ * (`<Op>VariablesSchema` / `<Op>ResultSchema`) for every named operation in your
+ * typed documents. The generated file imports `numericString` from the runtime
+ * library `@vantreeseba/graphql-zod`.
+ *
+ * @packageDocumentation
+ */
+
 import type { PluginFunction } from '@graphql-codegen/plugin-helpers';
+import { type VariableInfo, defaultScalarCodeMap, resolveTypeInfo } from '@vantreeseba/graphql-zod';
 import {
-  Kind,
   type FieldNode,
   type GraphQLEnumType,
   type GraphQLInputObjectType,
@@ -12,11 +21,10 @@ import {
   type GraphQLOutputType,
   type GraphQLSchema,
   type GraphQLUnionType,
+  Kind,
   type OperationDefinitionNode,
   type SelectionSetNode,
 } from 'graphql';
-import { defaultScalarCodeMap } from '../scalars.js';
-import { type VariableInfo, resolveTypeInfo } from '../typeResolver.js';
 
 // Cross-realm-safe helpers: graphql's built-in predicates and getNamedType use
 // instanceof internally, which fails when CJS and ESM instances of the graphql
@@ -80,7 +88,11 @@ function resolveInputFieldCode(
     code = buildInputTypeCode(namedType, scalarCodeMap, schema);
   } else if (namedType.name in scalarCodeMap) {
     code = scalarCodeMap[namedType.name];
-    if (!nullable && fieldName !== 'id' && (namedType.name === 'String' || namedType.name === 'ID')) {
+    if (
+      !nullable &&
+      fieldName !== 'id' &&
+      (namedType.name === 'String' || namedType.name === 'ID')
+    ) {
       code = `${code}.min(1, { message: '${toStartCase(fieldName)} is required' })`;
     }
   } else {

@@ -1,23 +1,16 @@
 {
   "$schema": "https://context7.com/schema/context7.json",
   "projectTitle": "@vantreeseba/graphql-zod",
-  "description": "Auto Zod validation schema builder from GraphQL typed documents: a runtime inferZodSchema for operation variables plus a graphql-codegen plugin that emits variables and result schemas.",
-  "folders": [
-    "src"
-  ],
-  "excludeFolders": [
-    "dist",
-    "node_modules",
-    ".git",
-    ".claude"
-  ],
-  "excludeFiles": [
-    "package-lock.json"
-  ],
+  "description": "Monorepo that builds Zod schemas from GraphQL typed documents: runtime @vantreeseba/graphql-zod (inferZodSchema) plus graphql-codegen plugin @vantreeseba/graphql-zod-codegen.",
+  "folders": ["packages"],
+  "excludeFolders": ["dist", "node_modules", ".git", ".claude", "coverage", "__generated__"],
+  "excludeFiles": ["package-lock.json"],
   "rules": [
+    "npm-workspaces monorepo: packages/graphql-zod is the runtime; packages/graphql-zod-codegen is the graphql-codegen plugin.",
     "ESM only (\"type\": \"module\") and TypeScript 5 strict mode; import paths use the .js extension.",
     "graphql (>=16) and zod (>=3) are peer dependencies, not bundled.",
-    "Public API: inferZodSchema (runtime), plugin (graphql-codegen), and the numericString helper — all exported from src/index.ts.",
+    "Runtime public API (from packages/graphql-zod/src/index.ts): inferZodSchema, numericString, and the shared codegen building blocks defaultScalarCodeMap / resolveTypeInfo / VariableInfo.",
+    "Codegen public API (from packages/graphql-zod-codegen/src/index.ts): the graphql-codegen plugin; its generated output imports numericString from @vantreeseba/graphql-zod.",
     "Nullable GraphQL fields map to .nullish(); list fields map to .array().",
     "Non-null String/ID fields get .min(1), except fields named 'id'.",
     "User scalar overrides merge over the default scalar map (user wins); user field overrides replace generated types wholesale.",

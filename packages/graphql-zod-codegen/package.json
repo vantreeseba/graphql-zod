@@ -1,0 +1,44 @@
+{
+  "name": "@vantreeseba/graphql-zod-codegen",
+  "version": "0.1.0",
+  "description": "GraphQL Code Generator plugin that emits Zod validation schemas from your typed documents.",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vantreeseba/graphql-zod.git",
+    "directory": "packages/graphql-zod-codegen"
+  },
+  "homepage": "https://github.com/vantreeseba/graphql-zod#readme",
+  "bugs": {
+    "url": "https://github.com/vantreeseba/graphql-zod/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.tests.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "@graphql-codegen/plugin-helpers": ">=7",
+    "@vantreeseba/graphql-zod": ">=0.1.0",
+    "graphql": ">=16"
+  },
+  "devDependencies": {
+    "@graphql-codegen/core": "^6.0.0",
+    "@graphql-codegen/plugin-helpers": "^7.0.0",
+    "@vantreeseba/graphql-zod": "*",
+    "graphql": "^16.14.0"
+  }
+}

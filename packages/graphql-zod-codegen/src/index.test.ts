@@ -1,7 +1,7 @@
 import type { Types } from '@graphql-codegen/plugin-helpers';
 import { buildSchema, parse } from 'graphql';
 import { describe, expect, it, vi } from 'vitest';
-import { plugin } from './plugin.js';
+import { plugin } from './index.js';
 
 // ---------------------------------------------------------------------------
 // Test schema
@@ -106,11 +106,7 @@ type SyncPluginOutput = string | { content: string; prepend?: string[]; append?:
 function runPlugin(sdl: string, config: Record<string, unknown> = {}): string {
   const result = plugin(schema, [makeDoc(sdl)], config) as SyncPluginOutput;
   if (typeof result === 'string') return result;
-  const parts = [
-    ...(result.prepend ?? []),
-    result.content,
-    ...(result.append ?? []),
-  ];
+  const parts = [...(result.prepend ?? []), result.content, ...(result.append ?? [])];
   return parts.join('\n');
 }
 
@@ -164,7 +160,9 @@ describe('plugin — query variables', () => {
   });
 
   it('Int variable uses numericString', () => {
-    const output = runPlugin('mutation UpdateAge($id: ID!, $age: Int) { updateUser(id: $id, age: $age) { id } }');
+    const output = runPlugin(
+      'mutation UpdateAge($id: ID!, $age: Int) { updateUser(id: $id, age: $age) { id } }',
+    );
     expect(output).toContain('numericString(z.number().int().safe())');
   });
 
@@ -216,14 +214,14 @@ describe('plugin — mutation variables', () => {
   });
 
   it('non-null String variable gets min(1)', () => {
-    const output = runPlugin('mutation DeleteUser($id: ID!, $reason: String!) { deleteUser(id: $id) }');
+    const output = runPlugin(
+      'mutation DeleteUser($id: ID!, $reason: String!) { deleteUser(id: $id) }',
+    );
     expect(output).toContain("min(1, { message: 'Reason is required' })");
   });
 
   it('generates both variables and result schemas', () => {
-    const output = runPlugin(
-      'mutation DeleteUser($id: ID!) { deleteUser(id: $id) }',
-    );
+    const output = runPlugin('mutation DeleteUser($id: ID!) { deleteUser(id: $id) }');
     expect(output).toContain('DeleteUserMutationVariablesSchema');
     expect(output).toContain('DeleteUserMutationResultSchema');
   });
@@ -234,7 +232,9 @@ describe('plugin — mutation variables', () => {
 // ---------------------------------------------------------------------------
 describe('plugin — subscription variables', () => {
   it('generates schemas for subscription operations', () => {
-    const output = runPlugin('subscription OnUserUpdated($id: ID!) { userUpdated(id: $id) { id name } }');
+    const output = runPlugin(
+      'subscription OnUserUpdated($id: ID!) { userUpdated(id: $id) { id name } }',
+    );
     expect(output).toContain('OnUserUpdatedSubscriptionVariablesSchema');
     expect(output).toContain('OnUserUpdatedSubscriptionResultSchema');
   });
@@ -284,7 +284,9 @@ describe('plugin — result schemas (scalars)', () => {
 // ---------------------------------------------------------------------------
 describe('plugin — result schemas (nested objects)', () => {
   it('generates a nested z.object for a nested type', () => {
-    const output = runPlugin('query GetUser($id: ID!) { user(id: $id) { address { street city country zip } } }');
+    const output = runPlugin(
+      'query GetUser($id: ID!) { user(id: $id) { address { street city country zip } } }',
+    );
     expect(output).toContain('address: z.object(');
     expect(output).toContain('street: z.string()');
     expect(output).toContain('city: z.string()');
@@ -361,13 +363,15 @@ describe('plugin — result schemas (mutations)', () => {
 // ---------------------------------------------------------------------------
 describe('plugin — JSONObject scalar', () => {
   it('JSONObject variable maps to z.record(z.string(), z.unknown())', () => {
-    const output = runPlugin('query FilterUsers($filter: JSONObject!) { usersByMeta(filter: $filter) { id } }');
-    expect(output).toContain("z.record(z.string(), z.unknown())");
+    const output = runPlugin(
+      'query FilterUsers($filter: JSONObject!) { usersByMeta(filter: $filter) { id } }',
+    );
+    expect(output).toContain('z.record(z.string(), z.unknown())');
   });
 
   it('JSONObject result field maps to z.record(z.string(), z.unknown())', () => {
     const output = runPlugin('query GetUser($id: ID!) { user(id: $id) { metadata } }');
-    expect(output).toContain("z.record(z.string(), z.unknown())");
+    expect(output).toContain('z.record(z.string(), z.unknown())');
   });
 });
 
@@ -425,10 +429,9 @@ describe('plugin — custom scalar config', () => {
   });
 
   it('custom scalar override applies to result fields', () => {
-    const output = runPlugin(
-      'query GetUser($id: ID!) { user(id: $id) { createdAt } }',
-      { scalars: { DateTime: 'z.string().datetime()' } },
-    );
+    const output = runPlugin('query GetUser($id: ID!) { user(id: $id) { createdAt } }', {
+      scalars: { DateTime: 'z.string().datetime()' },
+    });
     expect(output).toContain('z.string().datetime()');
     expect(output).not.toContain('z.date()');
   });

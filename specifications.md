@@ -102,7 +102,7 @@ User-supplied `options.scalars` entries are merged over this map (user wins on c
 
 The codegen mode is exposed as a standard `graphql-codegen` plugin. Users add it to their `codegen.yml` / `codegen.ts` config alongside their other plugins.
 
-**Plugin export:** `plugin` from `@vantreeseba/graphql-zod`.
+**Plugin export:** `plugin` from `@vantreeseba/graphql-zod-codegen`. The generated output imports `numericString` from the runtime package `@vantreeseba/graphql-zod`.
 
 **Plugin config:**
 ```yaml
@@ -110,7 +110,7 @@ The codegen mode is exposed as a standard `graphql-codegen` plugin. Users add it
 generates:
   src/__generated__/schemas.ts:
     plugins:
-      - '@vantreeseba/graphql-zod'
+      - '@vantreeseba/graphql-zod-codegen'
     config:
       scalars:
         DateTime: z.string().datetime()
